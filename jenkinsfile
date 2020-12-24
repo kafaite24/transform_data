@@ -1,0 +1,87 @@
+import groovy.sql.Sql
+
+pipeline {
+    agent any
+    stages {
+       
+		stage('remove unnecessary columns'){
+			 steps{
+                script{
+				
+					sqlconnection().execute'''
+						create view staff_u as
+						select employee_id, name_prefix,first_name, last_name, gender,email, father_name,mother_name, dob,age, weight, hire_date, age_in_company, salary,SSN, phone_number, country, city, state,region, zip_code,username, passcode, job_id,manager_id, department_id
+						from staff
+					'''	
+					}
+				}
+		}
+		stage('update datatypes'){
+            steps{
+                script{
+					
+					sqlconnection().execute'''
+						UPDATE staff_u SET age= CAST(age AS INT)
+					'''	
+					}
+				}
+			}
+			
+		stage('missing strings to null'){
+            steps{
+                script{
+					
+					sqlconnection().execute'''
+						update staff_u
+						set weight= nullif(weight,''), father_name= nullif(father_name,''),name_prefix= nullif(name_prefix,''),first_name= nullif(first_name,'')
+					'''
+				}
+			}}
+			
+		stage('handle missing values'){
+            steps{
+                script{
+					
+					sqlconnection().execute'''
+						update staff_u
+						set name_prefix= COALESCE(name_prefix, 'NO TITLE')
+					'''
+					sqlconnection().execute'''
+						UPDATE staff_u
+						SET weight = (select avg(weight) as avgweight
+						   from staff_u
+						  ) 
+						where weight is null
+					'''
+				}
+			}}
+		
+		stage('change required column values'){
+            steps{
+                script{
+					
+					sqlconnection().execute'''
+						UPDATE staff_u 
+						SET gender= Case gender
+										when 'Female' Then 'F'
+										when 'Male' Then 'M'
+									End 
+					'''
+				}
+			}}
+		
+		}
+	
+}
+
+@NonCPS
+    def sqlconnection() {
+        String URL = "jdbc:teradata://wbtlabserver.teradata.com/KH255051";
+        String username = "KH255051";
+        String password = "${dbc_password}";
+        String driver= "com.teradata.jdbc.TeraDriver"
+        
+        echo "Building connection"
+        def sqlconn = Sql.newInstance(URL, username, password, driver)
+        return sqlconn
+    }
