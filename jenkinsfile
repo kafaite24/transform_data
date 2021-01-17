@@ -70,6 +70,24 @@ pipeline {
 				}
 			}}
 		
+		stage('add new column'){
+            steps{
+                script{
+					
+					sqlconnection().execute'''
+						replace view staff_u as
+							select employee_id, name_prefix,first_name, last_name, gender,email, father_name,mother_name, dob,age, weight, hire_date, age_in_company, salary,SSN, phone_number, country, city, state,region, zip_code,username, passcode, job_id,manager_id, department_id,
+							CASE  
+							WHEN EXTRACT(MONTH FROM hire_date)<4 THEN 'Q1'
+							WHEN EXTRACT (MONTH FROM hire_date)>3 and EXTRACT (MONTH FROM hire_date)<7 THEN 'Q2'
+							WHEN EXTRACT (MONTH FROM hire_date)>6 and EXTRACT (MONTH FROM hire_date)<10 THEN 'Q3'
+							ELSE 'Q4'
+							END AS quarter_of_joining
+							from staff
+					'''
+				}
+			}}
+		
 		}
 	
 }
