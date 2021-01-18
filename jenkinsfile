@@ -10,14 +10,14 @@ pipeline {
 
 					sqlconnection().execute'''
 						
-						update staff
+						update employees_staging
 						set weight= nullif(weight,''), father_name= nullif(father_name,''),name_prefix= nullif(name_prefix,''),first_name= nullif(first_name,'')	
 					
 					'''
 
 					sqlconnection().execute'''
 					
-						REPLACE VIEW STAFF_U AS
+						REPLACE VIEW employees_view AS
 							SELECT EMPLOYEE_ID, COALESCE(NAME_PREFIX, 'NO TITLE') AS name_prefix,FIRST_NAME, LAST_NAME,CASE 
 								WHEN GENDER='FEMALE' THEN 'F'
 								WHEN GENDER='MALE' THEN 'M'
@@ -31,7 +31,7 @@ pipeline {
 								WHEN EXTRACT (MONTH FROM hire_date)>6 and EXTRACT (MONTH FROM hire_date)<10 THEN 'Q3'
 								ELSE 'Q4'
 								END as quarter_of_joining
-							FROM STAFF
+							FROM employees_staging
 	
 					'''	
 					}
