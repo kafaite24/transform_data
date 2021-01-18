@@ -4,90 +4,39 @@ pipeline {
     agent any
     stages {
        
-		stage('remove unnecessary columns'){
-			 steps{
-                script{
-				
-					sqlconnection().execute'''
-						create view staff_u as
-						select employee_id, name_prefix,first_name, last_name, gender,email, father_name,mother_name, dob,age, weight, hire_date, age_in_company, salary,SSN, phone_number, country, city, state,region, zip_code,username, passcode, job_id,manager_id, department_id
-						from staff
-					'''	
-					}
-				}
-		}
-		stage('update datatypes'){
+		stage('Make modifications'){
             steps{
                 script{
-					
+
 					sqlconnection().execute'''
-						UPDATE staff_u SET age= CAST(age AS INT)
+						
+						update staff
+						set weight= nullif(weight,''), father_name= nullif(father_name,''),name_prefix= nullif(name_prefix,''),first_name= nullif(first_name,'')	
+					
+					'''
+
+					sqlconnection().execute'''
+					
+						REPLACE VIEW STAFF_U AS
+							SELECT EMPLOYEE_ID, COALESCE(NAME_PREFIX, 'NO TITLE') AS name_prefix,FIRST_NAME, LAST_NAME,CASE 
+								WHEN GENDER='FEMALE' THEN 'F'
+								WHEN GENDER='MALE' THEN 'M'
+							END AS gender
+							,EMAIL, FATHER_NAME,MOTHER_NAME, DOB,CAST(age AS INT) as age, 
+							coalesce(weight, 0) as weight,
+							HIRE_DATE, AGE_IN_COMPANY, SALARY,SSN, PHONE_NUMBER, COUNTRY, CITY, STATE,REGION, ZIP_CODE,USERNAME, PASSCODE, JOB_ID,MANAGER_ID, DEPARTMENT_ID, 
+							CASE  
+								WHEN EXTRACT(MONTH FROM hire_date)<4 THEN 'Q1'
+								WHEN EXTRACT (MONTH FROM hire_date)>3 and EXTRACT (MONTH FROM hire_date)<7 THEN 'Q2'
+								WHEN EXTRACT (MONTH FROM hire_date)>6 and EXTRACT (MONTH FROM hire_date)<10 THEN 'Q3'
+								ELSE 'Q4'
+								END as quarter_of_joining
+							FROM STAFF
+	
 					'''	
 					}
 				}
 			}
-			
-		stage('missing strings to null'){
-            steps{
-                script{
-					
-					sqlconnection().execute'''
-						update staff_u
-						set weight= nullif(weight,''), father_name= nullif(father_name,''),name_prefix= nullif(name_prefix,''),first_name= nullif(first_name,'')
-					'''
-				}
-			}}
-			
-		stage('handle missing values'){
-            steps{
-                script{
-					
-					sqlconnection().execute'''
-						update staff_u
-						set name_prefix= COALESCE(name_prefix, 'NO TITLE')
-					'''
-					sqlconnection().execute'''
-						UPDATE staff_u
-						SET weight = (select avg(weight) as avgweight
-						   from staff_u
-						  ) 
-						where weight is null
-					'''
-				}
-			}}
-		
-		stage('change required column values'){
-            steps{
-                script{
-					
-					sqlconnection().execute'''
-						UPDATE staff_u 
-						SET gender= Case gender
-										when 'Female' Then 'F'
-										when 'Male' Then 'M'
-									End 
-					'''
-				}
-			}}
-		
-		stage('add new column'){
-            steps{
-                script{
-					
-					sqlconnection().execute'''
-						replace view staff_u as
-							select employee_id, name_prefix,first_name, last_name, gender,email, father_name,mother_name, dob,age, weight, hire_date, age_in_company, salary,SSN, phone_number, country, city, state,region, zip_code,username, passcode, job_id,manager_id, department_id,
-							CASE  
-							WHEN EXTRACT(MONTH FROM hire_date)<4 THEN 'Q1'
-							WHEN EXTRACT (MONTH FROM hire_date)>3 and EXTRACT (MONTH FROM hire_date)<7 THEN 'Q2'
-							WHEN EXTRACT (MONTH FROM hire_date)>6 and EXTRACT (MONTH FROM hire_date)<10 THEN 'Q3'
-							ELSE 'Q4'
-							END AS quarter_of_joining
-							from staff
-					'''
-				}
-			}}
-		
 		}
 	
 }
